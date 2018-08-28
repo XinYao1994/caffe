@@ -434,7 +434,7 @@ int main(int argc, char** argv) {
       "  time            benchmark model execution time");
   // Run tool or show usage.
   // PS INIT
-  ps:Start();
+  ps::Start(0);
   caffe::GlobalInit(&argc, &argv);
   if (argc == 2) {
 #ifdef WITH_PYTHON_LAYER
@@ -451,5 +451,5 @@ int main(int argc, char** argv) {
     gflags::ShowUsageWithFlagsRestrict(argv[0], "tools/caffe");
   }
   // PS DISPOSE
-  ps::Finalize();
+  ps::Finalize(0, true);
 }

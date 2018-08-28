@@ -6,7 +6,6 @@
 #include "caffe/util/io.hpp"
 #include "caffe/util/upgrade_proto.hpp"
 
-#include "ps/ps.h"
 
 //updated based on https://github.com/jizhuoran/caffe_cpu_sj.git
 
@@ -86,6 +85,9 @@ void SGDSolver<Dtype>::PreSolve() {
 		update_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
 		temp_.push_back(shared_ptr<Blob<Dtype> >(new Blob<Dtype>(shape)));
 	}
+#ifdef Dist
+	kv_ = new ps::KVWorker<float>(0, 0);
+#endif
 }
 
 template<typename Dtype>
@@ -127,7 +129,6 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 	 ComputeUpdateValue(param_id, rate);
 	 }
 	 this->net_->Update();*/
-//#define Dist
 #ifdef Dist
 	const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
 
@@ -138,7 +139,7 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 		ComputeUpdateValue(param_id, rate);
 	}
 
-	ps::KVWorker<float> kv(0);
+	//ps::KVWorker<float> kv(0, 0);
 
 	int total_parameter = 0;
 
@@ -169,11 +170,13 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 	}
 
 	// push update to the server
-	kv.sPush(keys, vals, this->iter_, len);
+	kv_->sPush(keys, vals, this->iter_, len);
+
 	std::vector<float> weight_;
 	std::vector<int> ret_len;
 	// pull update from the server
-	kv.Wait(kv.sPull(keys, &weight_, this->iter_, &ret_len));
+	kv_->Wait(kv_->sPull(keys, &weight_, this->iter_, &ret_len));
+
 	std::cout << "finish pull data!!!!" << std::endl;
 
 	total_parameter = 0;

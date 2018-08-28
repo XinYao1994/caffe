@@ -40,14 +40,18 @@ list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${GFLAGS_INCLUDE_DIRS})
 list(APPEND Caffe_LINKER_LIBS PUBLIC ${GFLAGS_LIBRARIES})
 
 # ---[ ps-lite
-list(APPEND Caffe_INCLUDE_DIRS PUBLIC ../3rdparty/ps-lite/include)
-list(APPEND Caffe_LINKER_LIBS PUBLIC ../3rdparty/ps-lite/build/libps.a)
-find_path ( ZMQ_INCLUDE_DIR zmq.h )
-find_library ( ZMQ_LIBRARY NAMES zmq )
-set ( ZMQ_LIBRARIES ${ZMQ_LIBRARY} )
-set ( ZMQ_INCLUDE_DIRS ${ZMQ_INCLUDE_DIR} )
+list(APPEND Caffe_INCLUDE_DIRS PUBLIC ../../3rdparty/ps-lite/include)
+#list(APPEND Caffe_INCLUDE_DIRS PUBLIC ../../include/pslite/include)
+list(APPEND Caffe_LINKER_LIBS PUBLIC ${PROJECT_SOURCE_DIR}/3rdparty/ps-lite/build/libps.a)
+
+find_path(ZMQ_INCLUDE_DIR zmq.h)
+find_library(ZMQ_LIBRARY NAMES zmq)
+set(ZMQ_LIBRARIES ${ZMQ_LIBRARY})
+set(ZMQ_INCLUDE_DIRS ${ZMQ_INCLUDE_DIR})
 list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${ZMQ_INCLUDE_DIRS})
 list(APPEND Caffe_LINKER_LIBS PUBLIC ${ZMQ_LIBRARIES})
+#list(APPEND Caffe_INCLUDE_DIRS PUBLIC ../3rdparty/ps-lite/deps/include)
+#list(APPEND Caffe_LINKER_LIBS PUBLIC ../3rdparty/ps-lite/deps/lib/libzmq.a)
 
 # ---[ Google-protobuf
 include(cmake/ProtoBuf.cmake)
