@@ -87,6 +87,14 @@ void SGDSolver<Dtype>::PreSolve() {
 	}
 #ifdef Dist
 	kv_ = new ps::KVWorker<float>(0, 0);
+	int total_parameter = 0;
+	for (int param_id = 0; param_id < this->net_->learnable_params().size();
+			++param_id) {
+		total_parameter += net_params[param_id]->count();
+	}
+	weight_ = new std::vector<float>();
+	last_weight_ = new std::vector<float>(total_parameter, 0);
+	std::cout << "create a kvworker" <<std::endl;
 #endif
 }
 
@@ -129,6 +137,7 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 	 ComputeUpdateValue(param_id, rate);
 	 }
 	 this->net_->Update();*/
+
 #ifdef Dist
 	const vector<Blob<Dtype>*>& net_params = this->net_->learnable_params();
 
@@ -139,7 +148,6 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 		ComputeUpdateValue(param_id, rate);
 	}
 
-	//ps::KVWorker<float> kv(0, 0);
 
 	int total_parameter = 0;
 
@@ -152,7 +160,7 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 	//std::vector<std::vector<float> > vals(this->net_->learnable_params());
 
 	std::vector<ps::Key> keys(1, 1);
-	std::vector<float> vals(0);
+	std::vector<float> vals(total_parameter);
 	std::vector<int> len(1, total_parameter);
 
 	//int rank = MyRank();
@@ -163,7 +171,8 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 		const Dtype* param_ = net_params[param_id]->cpu_diff();
 		for (int offset = 0; offset < net_params[param_id]->count(); ++ offset) {
 			// keys[total_parameter] = total_parameter;
-			vals.push_back(param_[offset]);
+			//vals.push_back(param_[offset]);
+			vals[total_parameter] = param_[offset];
 			//std::cout << param_[offset] << " ";
 			total_parameter++;
 		}
@@ -171,41 +180,41 @@ void SGDSolver<Dtype>::ApplyUpdate() {
 
 	// push update to the server
 	kv_->sPush(keys, vals, this->iter_, len);
-
-	std::vector<float> weight_;
+	//std::cout << "push, we have len:" << len[0] << std::endl;
 	std::vector<int> ret_len;
 	// pull update from the server
-	kv_->Wait(kv_->sPull(keys, &weight_, this->iter_, &ret_len));
-
-	std::cout << "finish pull data!!!!" << std::endl;
-
-	total_parameter = 0;
-	for (int param_id = 0; param_id < this->net_->learnable_params().size();
-			++param_id) {
-		const Dtype* param_ = net_params[param_id]->cpu_diff();
-		for (int offset = 0; offset < net_params[param_id]->count(); ++ offset) {
-			if(param_[offset] != weight_[total_parameter]) {
-				std::cout << "Debug info" << std::endl;
-			}
-			total_parameter++;
-
+	kv_->Wait(kv_->sPull(keys, weight_, this->iter_, &ret_len));
+	/*
+	 * For example: 0.00017799 0.000403049 0.000225059 0.00017799
+	std::cout << vals[0] << " " << (*weight_)[0] << " " << (*last_weight_)[0] << " " << ((*weight_)[0] - (*last_weight_)[0]) << std::endl;
+	for(int i=0; i<len[0]; i++){
+		if(vals[i]!= ((*weight_)[i] - (*last_weight_)[i])){ //equal, the error is within 1e-5
+			std::cout << vals[i] << " " << (*weight_)[i] << " " << (*last_weight_)[i] << " " << ((*weight_)[i] - (*last_weight_)[i]) << std::endl;
+			std::cout << "not equal" << std::endl;
+			break;
 		}
-	}
+	}*/
+	//std::cout << "finish pull data! we have len:" << ret_len[0] << std::endl;
 
-	std::cout << "total parameter is " << total_parameter;
 	total_parameter = 0;
-	std::cout << "tret_len is " << ret_len.size() << "   " << ret_len[0];
-
 	for (int param_id = 0; param_id < this->net_->learnable_params().size();
 			++param_id) {
 		Dtype* param_ = net_params[param_id]->mutable_cpu_diff();
 		for (int offset = 0; offset < net_params[param_id]->count(); ++ offset) {
-			param_[offset] = weight_[total_parameter];
+			//param_[offset] = weight_[total_parameter];
+			param_[offset] = ((*weight_)[total_parameter] - (*last_weight_)[total_parameter]);
 			total_parameter++;
 		}
 	}
 
+	//swap weight_ and last_weight_
+	std::vector<float> * swap_ = weight_;
+	weight_ = last_weight_;
+	last_weight_ = swap_;
+
+	//std::cout << "net to be updated" << std::endl;
 	this->net_->Update();
+
 #else
 	for (int param_id = 0; param_id < this->net_->learnable_params().size();
 			++param_id) {

@@ -3,6 +3,8 @@
 using namespace ps;
 using namespace std;
 
+#define HAVE_CAFFE
+
 // SSP connection test
 // template <typename Val>
 // struct KVServerSSPHandle {
@@ -109,7 +111,7 @@ public:
 				size_t lens = req_data.lens[i];
 				// checking values with lens CHECK_EQ(n, req_data.lens.size());
 				Key key = req_data.keys[i];
-				if (store[key].size()) {
+				if (!store[key].size()) {
 					for (size_t j = 0; j < lens; j++) {
 						store[key].push_back(req_data.vals[tolal_lens + j]); // init
 					}
@@ -178,9 +180,12 @@ void StartServer() {
 	cout << "num of workers[" << NumWorkers() << "]" << endl;
 	cout << "num of servers[" << NumServers() << "]" << endl;
 	auto server = new KVServer<float>(0);
-	server->stale = 1;
-	//server->set_request_handle(KVServerSSPHandle<float>());
+	server->stale = 0;
+#ifdef HAVE_CAFFE
 	server->set_request_handle(KVServerSSPHandle_Caffe<float>());
+#else
+	server->set_request_handle(KVServerSSPHandle<float>());
+#endif
 	RegisterExitCallback([server]() {delete server;});
 }
 
@@ -206,24 +211,10 @@ void RunWorker() {
 	vector<int> ts;
 	vector<float> rets;
 	for (int i = 0; i < repeat; ++i) {
-		//ts.push_back(kv.Push(keys, vals)); Xin YAO
-		//ts.push_back(kv.sPush(keys, vals, i));
-
-		//BSP
-		//kv.Wait(kv.Push(keys, vals));
-		//kv.Wait(kv.Pull(keys, &rets));
 		cout << "enter iteration: " << i << endl;
 		//SSP
 		ts.push_back(kv.sPush(keys, vals, i));
 		kv.Wait(kv.sPull(keys, &rets, i));
-
-		//ASP
-		//ts.push_back(kv.Push(keys, vals));
-		//kv.Wait(kv.Pull(keys, &rets));
-
-		// to avoid too frequency push, which leads huge memory usage
-		//if (i > 10)
-		//kv.Wait(ts[ts.size() - 10]);
 	}
 	//sync the rest
 	for (int t : ts)
@@ -240,13 +231,64 @@ void RunWorker() {
 	LL<< "error: " << res / repeat;
 }
 
+void RunWorker_Caffe() {
+	if (!IsWorker())
+		return;
+	KVWorker<float> kv(0, 0);
+
+	// init
+	int num = 10000;
+	vector<Key> keys(1, 1);
+	vector<float> vals(num);
+	vector<int> len(1, num);
+
+	int rank = MyRank();
+	srand(rank + 7);
+	for (int i = 0; i < num; ++i) {
+		//vals.push_back(i);
+		vals[i] = i;
+	}
+
+	// push
+	int repeat = 50;
+	vector<int> ts;
+	vector<float> rets;
+	std::vector<int> ret_len;
+	for (int i = 0; i < repeat; ++i) {
+		cout << "enter iteration: " << i << endl;
+		//SSP
+		ts.push_back(kv.sPush(keys, vals, i, len));
+		//cout << "finish push, enter pull " << i << endl;
+		kv.Wait(kv.sPull(keys, &rets, i, &ret_len));
+	}
+	//sync the rest
+	for (int t : ts)
+		kv.Wait(t);
+
+	// pull
+	kv.Wait(kv.Pull(keys, &rets, &ret_len));
+
+	float res = 0;
+	for (int i = 0; i < num; ++i) {
+		res += fabs(rets[i] - vals[i] * repeat * NumWorkers());
+	}
+	CHECK_LT(res / repeat, 1e-5);
+	LL<< "error: " << res / repeat;
+}
+
+
 int main(int argc, char *argv[]) {
 	// start system
 	Start(0);
 	// setup server nodes
 	StartServer();
 	// run worker nodes
+	//RunWorker();
+#ifdef HAVE_CAFFE
+	RunWorker_Caffe();
+#else
 	RunWorker();
+#endif
 	// stop system
 	Finalize(0, true);
 	return 0;

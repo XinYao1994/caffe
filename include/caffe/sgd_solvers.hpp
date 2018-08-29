@@ -57,6 +57,8 @@ protected:
 	vector<shared_ptr<Blob<Dtype> > > history_, update_, temp_;
 #ifdef Dist
 	ps::KVWorker<float> *kv_;
+	std::vector<float> *weight_;
+	std::vector<float> *last_weight_;
 #endif
 
 DISABLE_COPY_AND_ASSIGN(SGDSolver);
