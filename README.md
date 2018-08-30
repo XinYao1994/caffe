@@ -21,6 +21,16 @@ and step-by-step examples.
 - [OpenCL Caffe](https://github.com/BVLC/caffe/tree/opencl) e.g. for AMD or Intel devices.
 - [Windows Caffe](https://github.com/BVLC/caffe/tree/windows)
 
+## Distributed train via using Caffe
+We run distributed train in cluster, including the heterogeneous environment setting.
+
+The 3rdparty lib: ps-lite with ssp support
+
+We also give a demo in example/ps. (test_ssp.cc, using 'make' to generate the binary file)
+- ./examples/mnist/local.sh 2 10 examples/ps/test_ssp build/tools/caffe
+
+To use this version of Caffe (SSP model), please acknowledge our contribution or cite this github url, many thanks.
+
 ## Community
 
 [![Join the chat at https://gitter.im/BVLC/caffe](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/BVLC/caffe?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
