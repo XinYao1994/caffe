@@ -436,11 +436,13 @@ int main(int argc, char** argv) {
   // PS INIT
   ps::Start(0);
   caffe::GlobalInit(&argc, &argv);
+  int ret = 0;
   if (argc == 2) {
 #ifdef WITH_PYTHON_LAYER
     try {
 #endif
-      return GetBrewFunction(caffe::string(argv[1]))();
+      //return GetBrewFunction(caffe::string(argv[1]))();
+      ret = GetBrewFunction(caffe::string(argv[1]))();
 #ifdef WITH_PYTHON_LAYER
     } catch (bp::error_already_set) {
       PyErr_Print();
@@ -452,4 +454,5 @@ int main(int argc, char** argv) {
   }
   // PS DISPOSE
   ps::Finalize(0, true);
+  return ret;
 }
