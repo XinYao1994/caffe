@@ -40,9 +40,9 @@ list(APPEND Caffe_INCLUDE_DIRS PUBLIC ${GFLAGS_INCLUDE_DIRS})
 list(APPEND Caffe_LINKER_LIBS PUBLIC ${GFLAGS_LIBRARIES})
 
 # ---[ ps-lite
-list(APPEND Caffe_INCLUDE_DIRS PUBLIC ../../3rdparty/ps-lite/include)
+list(APPEND Caffe_INCLUDE_DIRS PUBLIC ../../../../ps/FluentPS/include)
 #list(APPEND Caffe_INCLUDE_DIRS PUBLIC ../../include/pslite/include)
-list(APPEND Caffe_LINKER_LIBS PUBLIC ${PROJECT_SOURCE_DIR}/3rdparty/ps-lite/build/libps.a)
+list(APPEND Caffe_LINKER_LIBS PUBLIC ${PROJECT_SOURCE_DIR}/../../ps/FluentPS/build/libps.a)
 
 find_path(ZMQ_INCLUDE_DIR zmq.h)
 find_library(ZMQ_LIBRARY NAMES zmq)
